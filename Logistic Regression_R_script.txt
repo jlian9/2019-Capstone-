@@ -1,0 +1,73 @@
+Logistic regression R script:
+#tf <- read_excel("code/firesample/fireRun2/tf.xlsx")
+library(InformationValue)
+library(ROCR)
+tf$fire_incidence <- as.factor(tf$fire_incidence)
+input_ones <- tf[which(tf$fire_incidence== "Y"), ]
+input_zeros <- tf[which(tf$fire_incidence == "N"), ]
+set.seed(100)  # for repeatability of samples
+input_ones_training_rows <- sample(1:nrow(input_ones), 0.7*nrow(input_ones))
+input_zeros_training_rows <- sample(1:nrow(input_zeros), 0.7*nrow(input_ones))
+training_ones <- input_ones[input_ones_training_rows, ] 
+training_zeros <- input_zeros[input_zeros_training_rows, ]
+trainingData <- rbind(training_ones, training_zeros)
+test_ones <- input_ones[-input_ones_training_rows, ]
+test_zeros <- input_zeros[-input_zeros_training_rows, ]
+testData <- rbind(test_ones, test_zeros)
+logitMod <-glm(fire_incidence ~ Aspct_Mean + Elev_Mean + ET_Mean+LAI_Mean+LFM_EVI + NDWI_Mean + PPT_Mean +Temp_Mean+VIgreen+VARI,data = trainingData,family="binomial",maxit=100)
+summary(logitMod)
+> summary(logitMod)
+
+
+Result:
+Call:
+glm(formula = fire_incidence ~ Aspct_Mean + Elev_Mean + ET_Mean + 
+    LAI_Mean + LFM_EVI + NDWI_Mean + PPT_Mean + Temp_Mean + VIgreen + 
+    VARI, family = "binomial", data = trainingData, maxit = 100)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-3.2093  -0.7243   0.0234   0.8201   2.6534  
+
+Coefficients:
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -5.4122771  0.2176429 -24.868  < 2e-16 ***
+Aspct_Mean   0.0076399  0.0005185  14.733  < 2e-16 ***
+Elev_Mean    0.0007609  0.0000646  11.779  < 2e-16 ***
+ET_Mean      0.0461063  0.0090401   5.100 3.39e-07 ***
+LAI_Mean    -3.2742951  0.6144421  -5.329 9.88e-08 ***
+LFM_EVI      0.0181551  0.0011252  16.135  < 2e-16 ***
+NDWI_Mean   -3.2945723  0.3519546  -9.361  < 2e-16 ***
+PPT_Mean     0.0654942  0.0234928   2.788  0.00531 ** 
+Temp_Mean    0.1113873  0.0059555  18.703  < 2e-16 ***
+VIgreen     -0.2401766  0.4106853  -0.585  0.55867    
+VARI         0.0015849  0.0060279   0.263  0.79260    
+---
+Signif. codes:  0 ¡®***¡¯ 0.001 ¡®**¡¯ 0.01 ¡®*¡¯ 0.05 ¡®.¡¯ 0.1 ¡® ¡¯ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 4960.2  on 3577  degrees of freedom
+Residual deviance: 3499.8  on 3567  degrees of freedom
+AIC: 3521.8
+
+Number of Fisher Scoring iterations: 7
+
+
+
+
+Pridiciton raster generator R script:
+
+predicted <- plogis(predict(logitMod, testData))
+optCutOff <- optimalCutoff(testData$fire_incidence, predicted)[1]
+[1] 0.614545
+fitpred = prediction(predicted,testData$fire_incidence)
+fitperf = performance(fitpred,"tpr","fpr")
+plot(fitperf,col="green",lwd=2,main="ROC Curve for Logistic: Fire Events in CA ")
+abline(a=0,b=1,lwd=2,lty=2,col="gray")
+misClassError(testData$fire_incidence, predicted)
+[1] 0.246
+sensitivity(testData$fire_incidence, predicted)
+[1] 0.8463542
+specificity(testData$fire_incidence, predicted)
+[1] 0.7236955

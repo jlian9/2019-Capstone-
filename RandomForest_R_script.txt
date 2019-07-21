@@ -1,0 +1,403 @@
+#Random Forest R script:
+
+library (caret)
+tf$fire_incidence <- as.factor(tf$fire_incidence)
+tf<-tf[,-1]
+tf<-tf[,-1]
+tf<-tf[,-1]
+#Split data
+index<- createDataPartition(tf$fire_incidence,p=0.7,list = FALSE)
+trainSet <- tf[ index,]
+testSet <- tf[-index,]
+#Feature selection using rfe in caret
+control <- rfeControl(functions = rfFuncs,method = "repeatedcv",repeats = 3,verbose = FALSE)
+outcomeName<-'fire_incidence'
+predictors<-names(trainSet)[!names(trainSet) %in% outcomeName]
+fire <- rfe(trainSet[,predictors], trainSet[,outcomeName],rfeControl = control)
+fire
+Recursive feature selection
+
+Outer resampling method: Cross-Validated (10 fold, repeated 3 times) 
+
+Resampling performance over subset size:
+
+ Variables Accuracy  Kappa AccuracySD KappaSD Selected
+         4   0.8996 0.7907    0.01396 0.02922         
+         8   0.9107 0.8140    0.01146 0.02397         
+        12   0.9113 0.8153    0.01064 0.02225        *
+
+The top 5 variables (out of 12):
+   Temp_Mean, Aspct_Mean, NDVI_Mean, Elev_Mean, EVI_Mean
+
+
+#Recursive feature selection
+model_rf<-train(trainSet[,predictors],trainSet[,outcomeName],method='rf')
+fitControl <- trainControl(method = "repeatedcv",number = 5, repeats = 5)
+grid <- expand.grid(mtry=c(3,4,5,6))
+model_rf<-train(trainSet[,predictors],trainSet[,outcomeName],method='rf',trControl=fitControl,tuneGrid=grid)
+print(model_rf)
+plot(model_rf)
+#mtry=3
+#Accuracy was used to select the optimal model using  the largest value.
+
+#Checking variable importance
+varImp(object=model_rf)
+rf variable importance
+
+           Overall
+Aspct_Mean 100.000
+Temp_Mean   56.844
+NDVI_Mean   40.427
+Elev_Mean   34.405
+EVI_Mean    29.647
+LFM_EVI     12.945
+LAI_Mean     7.322
+ET_Mean      4.188
+NDWI_Mean    2.356
+PPT_Mean     1.010
+VIgreen      0.205
+VARI         0.000
+
+plot(varImp(object=model_rf),main="Random Forest - Variable Importance")
+
+
+#Predictions
+predictions_rf<-predict.train(object=model_rf,testSet[,predictors],type="raw")
+table(predictions_rf)
+confusionMatrix(predictions_rf,testSet[,outcomeName])
+Confusion Matrix and Statistics
+
+          Reference
+Prediction    N    Y
+         N 1128   55
+         Y  110  712
+                                          
+               Accuracy : 0.9177          
+                 95% CI : (0.9048, 0.9294)
+    No Information Rate : 0.6175          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.8281          
+ Mcnemar's Test P-Value : 2.624e-05       
+                                          
+            Sensitivity : 0.9111          
+            Specificity : 0.9283          
+         Pos Pred Value : 0.9535          
+         Neg Pred Value : 0.8662          
+             Prevalence : 0.6175          
+         Detection Rate : 0.5626          
+   Detection Prevalence : 0.5900          
+      Balanced Accuracy : 0.9197          
+                                          
+       'Positive' Class : N      
+model_rf
+Random Forest 
+
+4679 samples
+  12 predictor
+   2 classes: 'N', 'Y' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold, repeated 5 times) 
+Summary of sample sizes: 4211, 4211, 4211, 4211, 4211, 4211, ... 
+Resampling results across tuning parameters:
+
+  mtry  Accuracy   Kappa    
+  3     0.9111768  0.8151412
+  4     0.9101937  0.8131677
+  5     0.9084415  0.8094725
+  6     0.9075007  0.8075511
+
+Accuracy was used to select the optimal model using the largest value.
+The final value used for the model was mtry = 3.
+
+
+#Input 2018 index data
+install.packages("raster")
+library(raster)
+library(SDMTools)
+library(rgdal)
+vigreen_aug = raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\AUG\\vigreen_aug.tif.asc")
+vari_aug= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\AUG\\vari_aug.tif.asc")
+t_aug= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\AUG\\tmean_aug_rsca.tif.asc")
+ppt_aug= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\AUG\\ppt_aug_rsca.tif.asc")
+ndwi_aug= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\AUG\\ndwi_aug.tif.asc")
+lai_aug= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\AUG\\lai_aug.tif.asc")
+et_aug= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\AUG\\et_aug.tif.asc")
+lfm_aug= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\AUG\\lfm_aug.tif.asc")
+aspect_total= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\aspect2.asc")
+elev_total= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\dem2.asc")
+ndvi_aug=raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\2018NDVI_EVI.asc\\ndvi_aug_rs.tif.asc")
+evi_aug=raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\2018NDVI_EVI.asc\\evi_aug_rs.tif.asc")
+
+VIGreen_Aug_asc<-as.array(vigreen_aug)
+vari_aug_asc<-as.array(vari_aug)
+t_aug_asc<-as.array(t_aug)
+ppt_aug_asc<-as.array(ppt_aug)
+ndwi_aug_asc<-as.array(ndwi_aug)
+lai_aug_asc<-as.array(lai_aug)
+et_aug_asc<-as.array(et_aug)
+aspect_total_asc<-as.array(aspect_total)
+elev_total_asc<-as.array(elev_total)
+lfm_aug_asc<-as.array(lfm_aug)
+ndvi_aug_asc<-as.array(ndvi_aug)
+evi_aug_asc<-as.array(evi_aug)
+
+dim_raster <- dim(elev_total_asc)
+nrows <- dim_raster[1]
+ncols <- dim_raster[2]
+bands <- dim_raster[3]
+
+elev<- as.data.frame(matrix(elev_total_asc, nrow = nrows*ncols, ncol = bands))
+aspct<- as.data.frame(matrix(aspect_total_asc, nrow = nrows*ncols, ncol = bands))
+et<- as.data.frame(matrix(et_aug_asc, nrow = nrows*ncols, ncol = bands))
+lai<- as.data.frame(matrix(lai_aug_asc, nrow = nrows*ncols, ncol = bands))
+ndwi<- as.data.frame(matrix(ndwi_aug_asc, nrow = nrows*ncols, ncol = bands))
+ppt<- as.data.frame(matrix(ppt_aug_asc, nrow = nrows*ncols, ncol = bands))
+t<- as.data.frame(matrix(t_aug_asc, nrow = nrows*ncols, ncol = bands))
+vari<- as.data.frame(matrix(vari_aug_asc, nrow = nrows*ncols, ncol = bands))
+vigreen<- as.data.frame(matrix(VIGreen_Aug_asc, nrow = nrows*ncols, ncol = bands))
+lfm<- as.data.frame(matrix(lfm_aug_asc, nrow = nrows*ncols, ncol = bands))
+ndvi<-as.data.frame(matrix(ndvi_aug_asc, nrow = nrows*ncols, ncol = bands))
+evi<-as.data.frame(matrix(evi_aug_asc, nrow = nrows*ncols, ncol = bands))
+
+colnames(lfm) <- c("LFM_EVI")
+colnames(vigreen) <- c("VIgreen")
+colnames(t) <- c("Temp_Mean")
+colnames(vari) <- c("VARI")
+colnames(ndwi) <- c("NDWI_Mean")
+colnames(lai) <- c("LAI_Mean")
+colnames(et) <- c("ET_Mean")
+colnames(aspct) <- c("Aspct_Mean")
+colnames(elev) <- c("Elev_Mean")
+colnames(ppt) <- c("PPT_Mean")
+colnames(ndvi) <-c("NDVI_Mean")
+colnames(evi) <-c("EVI_Mean")
+
+data2018<-aspct
+data2018[,2]<-elev
+data2018[,3]<-et
+data2018[,4]<-evi
+data2018[,5]<-lai
+data2018[,6]<-lfm
+data2018[,7]<-ndvi
+data2018[,8]<-ndwi
+data2018[,9]<-ppt
+data2018[,10]<-t
+data2018[,11]<-vigreen
+data2018[,12]<-vari
+#replace null value with a large number
+data2018[is.na(data2018)]<--9999
+#predict 2018 fire response based on our trained random forest model
+predicted<-predict(object=model_rf,data2018,type="prob")
+predicted<-predicted$Y
+#convert prediction data to matrix that fit raster output size
+predict_img<-matrix(predicted,nrow = nrows, ncol = ncols)
+#make raster file based on prediction
+image<-as.asc(predict_img, xll = -422170.19770706, yll = -609778.09852767, cellsize = 428.84183236607, type = c("numeric"))
+#write.asc(image,'aug3.asc')
+img_ascii<-raster(image)
+writeRaster(img_ascii,"aug1.tif")
+
+vigreen_july = raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JULY\\vigreen_july.tif.asc")
+vari_july= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JULY\\vari_july.tif.asc")
+t_july= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JULY\\tmean_july_rsca.tif.asc")
+ppt_july= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JULY\\ppt_july_rsca.tif.asc")
+ndwi_july= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JULY\\ndwi_july.tif.asc")
+lai_july= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JULY\\lai_july.tif.asc")
+et_july= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JULY\\et_july.tif.asc")
+lfm_july= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JULY\\lfm_july.tif.asc")
+ndvi_july=raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\2018NDVI_EVI.asc\\ndvi_july_rs.tif.asc")
+evi_july=raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\2018NDVI_EVI.asc\\evi_july_rs.tif.asc")
+
+VIGreen_July_asc<-as.array(vigreen_july)
+vari_july_asc<-as.array(vari_july)
+t_july_asc<-as.array(t_july)
+ppt_july_asc<-as.array(ppt_july)
+ndwi_july_asc<-as.array(ndwi_july)
+lai_july_asc<-as.array(lai_july)
+et_july_asc<-as.array(et_july)
+lfm_july_asc<-as.array(lfm_july)
+ndvi_july_asc<-as.array(ndvi_july)
+evi_july_asc<-as.array(evi_july)
+
+et<- as.data.frame(matrix(et_july_asc, nrow = nrows*ncols, ncol = bands))
+lai<- as.data.frame(matrix(lai_july_asc, nrow = nrows*ncols, ncol = bands))
+ndwi<- as.data.frame(matrix(ndwi_july_asc, nrow = nrows*ncols, ncol = bands))
+ppt<- as.data.frame(matrix(ppt_july_asc, nrow = nrows*ncols, ncol = bands))
+t<- as.data.frame(matrix(t_july_asc, nrow = nrows*ncols, ncol = bands))
+vari<- as.data.frame(matrix(vari_july_asc, nrow = nrows*ncols, ncol = bands))
+vigreen<- as.data.frame(matrix(VIGreen_July_asc, nrow = nrows*ncols, ncol = bands))
+lfm<- as.data.frame(matrix(lfm_july_asc, nrow = nrows*ncols, ncol = bands))
+ndvi<-as.data.frame(matrix(ndvi_july_asc, nrow = nrows*ncols, ncol = bands))
+evi<-as.data.frame(matrix(evi_july_asc, nrow = nrows*ncols, ncol = bands))
+
+colnames(lfm) <- c("LFM_EVI")
+colnames(vigreen) <- c("VIgreen")
+colnames(t) <- c("Temp_Mean")
+colnames(vari) <- c("VARI")
+colnames(ndwi) <- c("NDWI_Mean")
+colnames(lai) <- c("LAI_Mean")
+colnames(et) <- c("ET_Mean")
+colnames(ppt) <- c("PPT_Mean")
+colnames(ndvi) <-c("NDVI_Mean")
+colnames(evi) <-c("EVI_Mean")
+
+data2018_july<-aspct
+data2018_july[,2]<-elev
+data2018_july[,3]<-et
+data2018_july[,4]<-evi
+data2018_july[,5]<-lai
+data2018_july[,6]<-lfm
+data2018_july[,7]<-ndvi
+data2018_july[,8]<-ndwi
+data2018_july[,9]<-ppt
+data2018_july[,10]<-t
+data2018_july[,11]<-vigreen
+data2018_july[,12]<-vari
+
+data2018_july[is.na(data2018_july)]<--9999
+predicted<-predict(object=model_rf,data2018_july,type="prob")
+predicted<-predicted$Y
+predict_img<-matrix(predicted,nrow = nrows, ncol = ncols)
+image<-as.asc(predict_img, xll = -422170.19770706, yll = -609778.09852767, cellsize = 428.84183236607, type = c("numeric"))
+#write.asc(image,'aug3.asc')
+img_ascii<-raster(image)
+writeRaster(img_ascii,"july_rf.tif")
+
+
+
+vigreen_june = raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JUNE\\vigreen_june.tif.asc")
+vari_june= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JUNE\\vari_june.tif.asc")
+t_june= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JUNE\\tmean_june_rsca.tif.asc")
+ppt_june= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JUNE\\ppt_june_rsca.tif.asc")
+ndwi_june= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JUNE\\ndwi_june.tif.asc")
+lai_june= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JUNE\\lai_june.tif.asc")
+et_june= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JUNE\\et_june.tif.asc")
+lfm_june= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\JUNE\\lfm_june.tif.asc")
+ndvi_june=raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\2018NDVI_EVI.asc\\ndvi_june_rs.tif.asc")
+evi_june=raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\2018NDVI_EVI.asc\\evi_june_rs.tif.asc")
+
+VIGreen_June_asc<-as.array(vigreen_june)
+vari_june_asc<-as.array(vari_june)
+t_june_asc<-as.array(t_june)
+ppt_june_asc<-as.array(ppt_june)
+ndwi_june_asc<-as.array(ndwi_june)
+lai_june_asc<-as.array(lai_june)
+et_june_asc<-as.array(et_june)
+lfm_june_asc<-as.array(lfm_june)
+ndvi_june_asc<-as.array(ndvi_june)
+evi_june_asc<-as.array(evi_june)
+
+et<- as.data.frame(matrix(et_june_asc, nrow = nrows*ncols, ncol = bands))
+lai<- as.data.frame(matrix(lai_june_asc, nrow = nrows*ncols, ncol = bands))
+ndwi<- as.data.frame(matrix(ndwi_june_asc, nrow = nrows*ncols, ncol = bands))
+ppt<- as.data.frame(matrix(ppt_june_asc, nrow = nrows*ncols, ncol = bands))
+t<- as.data.frame(matrix(t_june_asc, nrow = nrows*ncols, ncol = bands))
+vari<- as.data.frame(matrix(vari_june_asc, nrow = nrows*ncols, ncol = bands))
+vigreen<- as.data.frame(matrix(VIGreen_June_asc, nrow = nrows*ncols, ncol = bands))
+lfm<- as.data.frame(matrix(lfm_june_asc, nrow = nrows*ncols, ncol = bands))
+ndvi<-as.data.frame(matrix(ndvi_june_asc, nrow = nrows*ncols, ncol = bands))
+evi<-as.data.frame(matrix(evi_june_asc, nrow = nrows*ncols, ncol = bands))
+
+colnames(lfm) <- c("LFM_EVI")
+colnames(vigreen) <- c("VIgreen")
+colnames(t) <- c("Temp_Mean")
+colnames(vari) <- c("VARI")
+colnames(ndwi) <- c("NDWI_Mean")
+colnames(lai) <- c("LAI_Mean")
+colnames(et) <- c("ET_Mean")
+colnames(ppt) <- c("PPT_Mean")
+colnames(ndvi) <-c("NDVI_Mean")
+colnames(evi) <-c("EVI_Mean")
+
+data2018_june<-aspct
+data2018_june[,2]<-elev
+data2018_june[,3]<-et
+data2018_june[,4]<-evi
+data2018_june[,5]<-lai
+data2018_june[,6]<-lfm
+data2018_june[,7]<-ndvi
+data2018_june[,8]<-ndwi
+data2018_june[,9]<-ppt
+data2018_june[,10]<-t
+data2018_june[,11]<-vigreen
+data2018_june[,12]<-vari
+
+data2018_june[is.na(data2018_june)]<--9999
+predicted<-predict(object=model_rf,data2018_june,type="prob")
+predicted<-predicted$Y
+predict_img<-matrix(predicted,nrow = nrows, ncol = ncols)
+image<-as.asc(predict_img, xll = -422170.19770706, yll = -609778.09852767, cellsize = 428.84183236607, type = c("numeric"))
+img_ascii<-raster(image)
+writeRaster(img_ascii,"june_rf.tif")
+
+
+vigreen_may = raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\MAY\\vigreen_may.tif.asc")
+vari_may= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\MAY\\vari_may.tif.asc")
+t_may= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\MAY\\tmean_may_rsca.tif.asc")
+ppt_may= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\MAY\\ppt_may_rsca.tif.asc")
+ndwi_may= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\MAY\\ndwi_may.tif.asc")
+lai_may= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\MAY\\lai_may.tif.asc")
+et_may= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\MAY\\et_may.tif.asc")
+lfm_may= raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\MAY\\lfm_may.tif.asc")
+ndvi_may=raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\2018NDVI_EVI.asc\\ndvi_may_rs.tif.asc")
+evi_may=raster("C:\\Users\\Yichen\\Desktop\\Wildfire\\code\\2018ASC\\2018NDVI_EVI.asc\\evi_may_rs.tif.asc")
+
+VIGreen_May_asc<-as.array(vigreen_may)
+vari_may_asc<-as.array(vari_may)
+t_may_asc<-as.array(t_may)
+ppt_may_asc<-as.array(ppt_may)
+ndwi_may_asc<-as.array(ndwi_may)
+lai_may_asc<-as.array(lai_may)
+et_may_asc<-as.array(et_may)
+lfm_may_asc<-as.array(lfm_may)
+ndvi_may_asc<-as.array(ndvi_may)
+evi_may_asc<-as.array(evi_may)
+
+et<- as.data.frame(matrix(et_may_asc, nrow = nrows*ncols, ncol = bands))
+lai<- as.data.frame(matrix(lai_may_asc, nrow = nrows*ncols, ncol = bands))
+ndwi<- as.data.frame(matrix(ndwi_may_asc, nrow = nrows*ncols, ncol = bands))
+ppt<- as.data.frame(matrix(ppt_may_asc, nrow = nrows*ncols, ncol = bands))
+t<- as.data.frame(matrix(t_may_asc, nrow = nrows*ncols, ncol = bands))
+vari<- as.data.frame(matrix(vari_may_asc, nrow = nrows*ncols, ncol = bands))
+vigreen<- as.data.frame(matrix(VIGreen_May_asc, nrow = nrows*ncols, ncol = bands))
+lfm<- as.data.frame(matrix(lfm_may_asc, nrow = nrows*ncols, ncol = bands))
+ndvi<-as.data.frame(matrix(ndvi_may_asc, nrow = nrows*ncols, ncol = bands))
+evi<-as.data.frame(matrix(evi_may_asc, nrow = nrows*ncols, ncol = bands))
+
+colnames(lfm) <- c("LFM_EVI")
+colnames(vigreen) <- c("VIgreen")
+colnames(t) <- c("Temp_Mean")
+colnames(vari) <- c("VARI")
+colnames(ndwi) <- c("NDWI_Mean")
+colnames(lai) <- c("LAI_Mean")
+colnames(et) <- c("ET_Mean")
+colnames(ppt) <- c("PPT_Mean")
+colnames(ndvi) <-c("NDVI_Mean")
+colnames(evi) <-c("EVI_Mean")
+
+data2018_may<-aspct
+data2018_may[,2]<-elev
+data2018_may[,3]<-et
+data2018_may[,4]<-evi
+data2018_may[,5]<-lai
+data2018_may[,6]<-lfm
+data2018_may[,7]<-ndvi
+data2018_may[,8]<-ndwi
+data2018_may[,9]<-ppt
+data2018_may[,10]<-t
+data2018_may[,11]<-vigreen
+data2018_may[,12]<-vari
+
+
+#img_ascii<-raster(predict_img)
+
+#writeRaster(img_ascii,"may.tif")
+data2018_may[is.na(data2018_may)]<--9999
+predicted<-predict(object=model_rf,data2018_may,type="prob")
+predicted<-predicted$Y
+predict_img<-matrix(predicted,nrow = nrows, ncol = ncols)
+image<-as.asc(predict_img, xll = -422170.19770706, yll = -609778.09852767, cellsize = 428.84183236607, type = c("numeric"))
+img_ascii<-raster(image)
+writeRaster(img_ascii,"may_rf.tif")
