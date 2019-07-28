@@ -14,11 +14,13 @@ from datetime import datetime
 
 for i in infileName:
     print('Now it is working on '+ i)
+    ##strptime function to convert the "YearMonthDay" to Julian date
     doy = datetime.strptime(i[25:33],'%Y%m%d')
     tt = doy.timetuple()
     outJdate = str('%d%03d' % (tt.tm_year, tt.tm_yday))
     
     print('Updated new file named: '+ i[0:25]+outJdate + '.tif')
+    ##reprocet the raster and update the julian date to the file name 
     arcpy.ProjectRaster_management(i,
                                r'D:\Fire data\2000-2018Raster\TEMP\PRISM_tmean_stable_4kmD1_20180101_20181130_bil\output'+'\\'+i[0:25]+outJdate + '.tif',
                                r'C:\Users\jw\Desktop\code test\fire\fire2000_2017.shp')
