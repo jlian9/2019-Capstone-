@@ -6,12 +6,13 @@ import os
 import matplotlib.pyplot as plt
 from statistics import mean 
 
-
+##the fileds may need to update in the feature class
 fields= ['FID','Julian_Dat','Aspct_Mean','Elev_Mean','ET_Mean','EVI_Mean','LAI_Mean','LFM_EVI','LFM_Mean','NDVI_Mean','NDWI_Mean','PPT_Mean','Temp_Mean','VIgreen','VARI']
 
+##set up a temporary shapefile to store the mask shape
 tempSHP = r"C:\Users\jw\Desktop\code test\testOutput\temp22.shp"
 
-
+##generate the path name list for target folder
 Index_List = [f for f in os.listdir(r'E:\PPT 8DAY RESAMPLE 250') if f.endswith('S250.tif')]
 arcpy.env.workspace = r'E:\PPT 8DAY RESAMPLE 250'
 
@@ -19,9 +20,14 @@ arcpy.env.workspace = r'E:\PPT 8DAY RESAMPLE 250'
 def updateIndex(fcs):
     with arcpy.da.UpdateCursor(fcs, fields) as cursor:
         for row in cursor:
+                ##layer selection query expression
                 expression = 'FID=' + str(row[0])  
+                ##set default value for this index to 999, the valid value will replace the 999 later 
+                ##row[] need to changed for different index 
                 row[11]=999
                 cursor.updateRow(row)
+                
+                
                 try:
                     #get the day of fire event
                     fireD = int(row[1][4:8])
@@ -31,15 +37,16 @@ def updateIndex(fcs):
                     print('The fire day is '+str(fireD))
                     print('The fire year is '+str(fireY))
 
-                ##create a temp mask to select with
+                    ##create a temp layer to select with
                     try:
                         arcpy.MakeFeatureLayer_management(fcs,'temp')
+                        #create a list to store raters name
                         tempMask = arcpy.SelectLayerByAttribute_management('temp','NEW_SELECTION',expression)
                         arcpy.CopyFeatures_management(tempMask, tempSHP)
-                        #create a list to store raters name
+                        
                         tempMask = []
                         for i in Index_List:  #loop through the ETfile list 
-                            ###CHANGE
+                            ###CHANGE the i[x:x] base on different index
 
                             fileDateStrDouble = i[23:30] # when i =0: "2016353"     '2017001'
                             fileDateStr = str(fileDateStrDouble)
@@ -92,15 +99,16 @@ def updateIndex(fcs):
                         for inRaster in tempMask:
 
                             try:
+                                ##try to clip the pixels by using the tempMask
                                 outClipMask = arcpy.Clip_management(inRaster,'#','#',tempSHP,'ClippingGeometry')
                                 print('working on feature ID: '+ str(row[0]))
-   
+                                
+                                ##calculate the statistic for extracted pixels 
                                 arcpy.CalculateStatistics_management(outClipMask)
-                                                              
+                               
+                                ##calculate the mean value                               
                                 IndexMeanResult = arcpy.GetRasterProperties_management(outClipMask,'MEAN')
-                    
                                 MeanValue.append(float(IndexMeanResult.getOutput(0)))
-                    
                                 print('Mean value: ' + str(mean(MeanValue)))
                                 #CHANGE THE TARGET FIELD HERE
                                 row[11]=mean(MeanValue)
